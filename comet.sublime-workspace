@@ -1,0 +1,448 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"imp",
+				"import"
+			],
+			[
+				"Nato",
+				"NanumGothic"
+			],
+			[
+				"cap",
+				"small-caps\tfont-variant"
+			],
+			[
+				"large",
+				"x-large\tfont-size"
+			],
+			[
+				"back",
+				"background-color\tproperty"
+			],
+			[
+				"auto",
+				"autofocus\tAttr"
+			],
+			[
+				"style",
+				"list-style\tproperty"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"contents": "from orbital import orbit\nfrom usefultools import *\nimport csv\nimport pandas as pd\nimport plotly.graph_objs as go\nimport random\n\ndf_line = pd.read_csv('kepler_XYZ_line.csv')\ndf = pd.read_csv('kepler_XYZ.csv')\ndf = df.set_index(df['time'])\n#df1 = df[df['name'] == 'Pluto'].reset_index()\nplanets = df.drop_duplicates(\"name\", keep='first')[\"name\"].values\ncolor_discrete_map = {}\nrandom.seed(300)\nfor planet in planets:\n    r = random.randint(0, 255)\n    g = random.randint(0, 255)\n    b = random.randint(0, 255)\n    color_discrete_map[planet] = f'rgb({r},{g},{b})'\n#color_discrete_map = {'virginica': 'rgb(255,0,0)', 'setosa': 'rgb(0,255,0)', 'versicolor': 'rgb(0,0,255)'}\n#fig = px.scatter(df[df.species.isin(['virginica', 'setosa'])], x=\"sepal_width\", y=\"sepal_length\", color=\"species\", color_discrete_map=color_discrete_map)\n\n# make figure\nfig_dict = {\n    \"data\": [],\n    \"layout\": {},\n    \"frames\": []\n}\n\n# fill in most of layout\nfig_dict[\"layout\"][\"xaxis\"] = {\"range\": [df['x'].min(), df['x'].max()], \"title\": \"X\"}\nfig_dict[\"layout\"][\"yaxis\"] = {\"range\": [df['y'].min(), df['y'].max()], \"title\": \"Y\"}\n#fig_dict[\"layout\"][\"zaxis\"] = {\"range\": [df['z'].min(), df['z'].max()], \"title\": \"Z\"}\nfig_dict[\"layout\"][\"hovermode\"] = \"closest\"\nfig_dict[\"layout\"][\"updatemenus\"] = [\n    {\n        \"buttons\": [\n            {\n                \"args\": [None, {\"frame\": {\"duration\": 500, \"redraw\": False},\n                                \"fromcurrent\": True, \"transition\": {\"duration\": 300,\n                                                                    \"easing\": \"quadratic-in-out\"}}],\n                \"label\": \"Play\",\n                \"method\": \"animate\"\n            },\n            {\n                \"args\": [[None], {\"frame\": {\"duration\": 0, \"redraw\": False},\n                                  \"mode\": \"immediate\",\n                                  \"transition\": {\"duration\": 0}}],\n                \"label\": \"Pause\",\n                \"method\": \"animate\"\n            }\n        ],\n        \"direction\": \"left\",\n        \"pad\": {\"r\": 10, \"t\": 87},\n        \"showactive\": False,\n        \"type\": \"buttons\",\n        \"x\": 0.1,\n        \"xanchor\": \"right\",\n        \"y\": 0,\n        \"yanchor\": \"top\"\n    }\n]\n\nsliders_dict = {\n    \"active\": 0,\n    \"yanchor\": \"top\",\n    \"xanchor\": \"left\",\n    \"currentvalue\": {\n        \"font\": {\"size\": 20},\n        \"prefix\": \"JD:\",\n        \"visible\": True,\n        \"xanchor\": \"right\"\n    },\n    \"transition\": {\"duration\": 300, \"easing\": \"cubic-in-out\"},\n    \"pad\": {\"b\": 10, \"t\": 50},\n    \"len\": 0.9,\n    \"x\": 0.1,\n    \"y\": 0,\n    \"steps\": []\n}\n\n# make data\ntraces1 = [go.Scatter3d(\n      x = df_line[df_line['name'] == planet]['x'], y = df_line[df_line['name'] == planet]['y'], z = df_line[df_line['name'] == planet]['z'],\n      mode = 'lines', marker = dict(\n         size = 3,\n        color = color_discrete_map[planet], # set color to an array/list of desired values\n         colorscale = 'Viridis'\n         ),\n      name = planet\n      )\n   for planet in planets]\ntraces2 = [go.Scatter3d(\n      x = df_line[df_line['name'] == planet]['x'], y = df_line[df_line['name'] == planet]['y'], z = df_line[df_line['name'] == planet]['z'],\n      mode = 'lines', marker = dict(\n         size = 3,\n         color = color_discrete_map[planet], # set color to an array/list of desired values\n         colorscale = 'Viridis'\n         ),\n      name = planet, showlegend=False\n      )\n   for planet in planets]\nfig_dict[\"data\"] = traces1 + traces2\n\n# make frames\nstart = 0\nend = 10000\nstep = 50\nframes = []\nfor t in range(start, end, step):\n    data = []\n    for planet in planets:\n        xdata , ydata, zdata = [], [], []\n        xdata.append(df[df['name']==planet]['x'][t])\n        ydata.append(df[df['name']==planet]['y'][t])\n        zdata.append(df[df['name']==planet]['z'][t])\n        data.append(go.Scatter3d(x=xdata, y=ydata, z=zdata, mode='markers',\n                        marker=dict(size=4, color=color_discrete_map[planet], colorscale='Viridis'\n                                    )))\n    frames.append(go.Frame(data=data))\n\n    slider_step = {\"args\": [\n        [t],\n        {\"frame\": {\"duration\": 300, \"redraw\": False},\n         \"mode\": \"immediate\",\n         \"transition\": {\"duration\": 300}}\n    ],\n        \"label\": t,\n        \"method\": \"animate\"}\n    sliders_dict[\"steps\"].append(slider_step)\n\nfig_dict['frames'] = frames\nfig_dict[\"layout\"][\"sliders\"] = [sliders_dict]\n\nlayout = go.Layout(\n        title = '3D Scatter plot',\n        xaxis=dict(range=[df['x'].min(), df['x'].max()], autorange=False, zeroline=False),\n        yaxis=dict(range=[df['x'].min(), df['x'].max()], autorange=False, zeroline=False),\n        title_text=\"Kinematic Generation of a Planar Curve\", hovermode=\"closest\",\n        updatemenus=[dict(type=\"buttons\",\n                          buttons=[dict(label=\"Play\",\n                                        method=\"animate\",\n                                        args=[None])])])\nfig_dict['layout'] = layout\n#fig = go.Figure(fig_dict)\nfig = go.Figure(fig_dict)\nfig.write_html(\"orbit_planets.html\")\nfig.show()",
+			"file": "Gauss_Method/plotly_test2.py",
+			"file_size": 5040,
+			"file_write_time": 132513512126097057,
+			"settings":
+			{
+				"buffer_size": 5040,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Python/Python.sublime-build",
+					""
+				],
+				[
+					"Packages/Python/Python.sublime-build",
+					"Syntax Check"
+				],
+				[
+					"Packages/User/chrome.sublime-build",
+					""
+				]
+			],
+			[
+				"Packages/Python/Python.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"remove",
+				"Package Control: Remove Package"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			],
+			[
+				"sidebar",
+				"View: Toggle Side Bar"
+			],
+			[
+				"exp",
+				"Set Syntax: Python"
+			],
+			[
+				"color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"prettier",
+				"Preferences: JsPrettier Settings - Default"
+			],
+			[
+				"update",
+				"Package Control: Upgrade/Overwrite All Packages"
+			],
+			[
+				"package install",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 150.0,
+		"history":
+		[
+			"import numpy",
+			"import time",
+			"clear",
+			"python.__version__",
+			"which python",
+			"import numpy",
+			"ls",
+			"clear",
+			"ls"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/jsha/SublimeText3/comet"
+	],
+	"file_history":
+	[
+		"/Users/jsha/SublimeText3/comet/r_rho_graph.py",
+		"/Users/jsha/SublimeText3/comet/2D_animation.py",
+		"/Users/jsha/SublimeText3/comet.sublime-project",
+		"/Users/jsha/SublimeText3/comet/f.py",
+		"/Users/jsha/SublimeText3/comet/Functions/gausselimination.py",
+		"/Users/jsha/SublimeText3/comet/Functions/gauss_elimination.py",
+		"/Users/jsha/SublimeText3/comet/f_requirements.py",
+		"/Users/jsha/SublimeText3/comet/test.py",
+		"/Users/jsha/SublimeText3/comet/help.py",
+		"/Users/jsha/SublimeText3/comet/tt.py",
+		"/Users/jsha/SublimeText3/comet/newfile.py",
+		"/Users/jsha/Library/Application Support/Sublime Text 3/Packages/User/Side Bar.sublime-settings",
+		"/Users/jsha/Library/Application Support/Sublime Text 3/Packages/User/envDash.sublime-build",
+		"/Users/jsha/Library/Application Support/Sublime Text 3/Packages/User/envcomet.sublime-build",
+		"/Users/jsha/tttttest.py",
+		"/Users/jsha/SublimeText3/tryDash/generic_crossfilter_recipe.py",
+		"/Users/jsha/Documents/app.py",
+		"/Users/jsha/Library/Application Support/Sublime Text 3/Packages/JsPrettier/JsPrettier.sublime-settings",
+		"/Users/jsha/SublimeText3/8_movie.html",
+		"/Users/jsha/SublimeText3/16강_텍스트속성.html",
+		"/Users/jsha/SublimeText3/NanumGothic.otf",
+		"/Users/jsha/SublimeText3/15_text.html",
+		"/Users/jsha/SublimeText3/14_pseudo_class.html",
+		"/Users/jsha/SublimeText3/12_about_css.html",
+		"/Users/jsha/SublimeText3/13_selector.html",
+		"/Users/jsha/SublimeText3/first.css",
+		"/Users/jsha/SublimeText3/11_select.html",
+		"/Users/jsha/Downloads/Python_Programming/examples/06_rk4_example.py",
+		"/Users/jsha/Downloads/calc_pmotion.py",
+		"/Users/jsha/SublimeText3/10_input.html",
+		"/Users/jsha/SublimeText3/10_homework.html",
+		"/Users/jsha/SublimeText3/9_track.html",
+		"/Users/jsha/SublimeText3/movie1.vtt",
+		"/Users/jsha/SublimeText3/9_form.html",
+		"/Users/jsha/SublimeText3/7_1.html",
+		"/Users/jsha/SublimeText3/7_image.html",
+		"/Users/jsha/SublimeText3/6_1.html",
+		"/Users/jsha/SublimeText3/3_2.html",
+		"/Users/jsha/SublimeText3/4_1.html",
+		"/Users/jsha/SublimeText3/5_1.html",
+		"/Users/jsha/SublimeText3/first.html",
+		"/Users/jsha/SublimeText3/test.html",
+		"/Users/jsha/Library/Application Support/Sublime Text 3/Packages/User/chrome.sublime-build"
+	],
+	"find":
+	{
+		"height": 26.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "Gauss_Method/plotly_test2.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 5040,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5040,
+								5040
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+									"1":
+									[
+										5039,
+										5040
+									]
+								},
+								"icon":
+								{
+									"1":
+									[
+										"Packages/BracketHighlighter/icons/round_bracket.png",
+										"region.yellowish"
+									]
+								},
+								"open":
+								{
+									"1":
+									[
+										5038,
+										5039
+									]
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content"
+							],
+							"git_gutter_is_enabled": true,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 26.0
+	},
+	"input":
+	{
+		"height": 45.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.SublimeLinter":
+	{
+		"height": 0.0
+	},
+	"output.exec":
+	{
+		"height": 167.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/User/envcomet.sublime-build",
+	"project": "comet.sublime-project",
+	"replace":
+	{
+		"height": 48.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 231.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
