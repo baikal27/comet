@@ -8,6 +8,10 @@ import plotly.graph_objects as go
 from dash.dependencies import Input, Output, State
 import random
 import pandas as pd
+from datetime import date, datetime
+from astropy.time import Time
+
+
 
 all_options = {
 	'Planets': ['Mercury', 'Venus', 'EM_Bary', 'Mars', 'Jupiter', 'Saturn',
@@ -48,20 +52,27 @@ scene_options = {
 	}
 
 
-
-
 df = pd.read_csv('kepler_XYZ.csv', index_col='time')
 
 app = dash.Dash(__name__)
 app.layout = html.Div(
 	html.Div([
 		dcc.Dropdown(
-        id='planet-dropdown',
-        options=[
-            {'label': name, 'value': name} for name in all_options.keys()],
-        value='Planets'
-    ),
+			id='planet-dropdown',
+			options=[
+				{'label': name, 'value': name} for name in all_options.keys()],
+			value='Planets'
+		),
+		dcc.DatePickerRange(
+			id='my-date-picker-range',
+			min_date_allowed=date(1970, 1, 1),
+			max_date_allowed=date(2070, 1, 1),
+			initial_visible_month=date(2020, 1, 1),
+			start_date = date.today(),
+			end_date=date(2050, 8, 25)
+		),
 		html.H4('TERRA Satellite Live Feed'),
+		html.Div(id='output-container-date-picker-range'),
 		html.Div(id='hidden-value', style={'display': 'none'}),
 		html.Div(id='live-update-text'),
 		dcc.Graph(id='live-update-graph'),
@@ -73,11 +84,19 @@ app.layout = html.Div(
 	])
 )
 
-
 @app.callback(Output('hidden-value', 'children'),
-				Input('planet-dropdown', 'value'))
-def upload_data(selected_option):
-		# variables
+				Input('planet-dropdown', 'value'),
+				Input('my-date-picker-range', 'start_date'),
+				Input('my-date-picker-range', 'end_date')
+			)
+def upload_data(selected_option, st_date, en_date):
+	if st_date is not None:
+		start_date_object = datetime.fromisoformat(st_date)
+		sjd = Time(start_date_object).jd
+	if en_date is not None:
+		end_date_object = datetime.fromisoformat(en_date)
+		ejd = Time(end_date_object).jd
+	
 	start=0
 	m = 10000 # data 개수
 	internum = 100 # 속도와 관련 10~50
@@ -93,7 +112,6 @@ def upload_data(selected_option):
 			)
 		selected_data.append(datadict)
 	return selected_data
-
 
 @app.callback(Output('live-update-text', 'children'),
 				Input('hidden-value', 'children'),
