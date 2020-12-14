@@ -18,6 +18,37 @@ all_options = {
 	'Fluid' : ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
 }
 
+scene_options = {
+	'Planets' : dict(
+			xaxis = dict(nticks=4, range=[-10,10]),
+			yaxis = dict(nticks=4, range=[-10,10]),
+			zaxis = dict(nticks=4, range=[-10,10])
+			),
+	'Comets' : dict(
+			xaxis = dict(nticks=4, range=[-2,2]),
+			yaxis = dict(nticks=4, range=[-2,2]),
+			zaxis = dict(nticks=4, range=[-2,2])
+			),
+	'Asteroid' : dict(
+			xaxis = dict(nticks=4, range=[-2,2]),
+			yaxis = dict(nticks=4, range=[-2,2]),
+			zaxis = dict(nticks=4, range=[-2,2])
+			),
+	'Rocky' : dict(
+			xaxis = dict(nticks=4, range=[-2,2]),
+			yaxis = dict(nticks=4, range=[-2,2]),
+			zaxis = dict(nticks=4, range=[-2,2])
+			),
+	'Fluid' : dict(
+			xaxis = dict(nticks=4, range=[-2,2]),
+			yaxis = dict(nticks=4, range=[-2,2]),
+			zaxis = dict(nticks=4, range=[-2,2])
+			)
+
+	}
+
+
+
 
 df = pd.read_csv('kepler_XYZ.csv', index_col='time')
 
@@ -31,7 +62,7 @@ app.layout = html.Div(
         value='Planets'
     ),
 		html.H4('TERRA Satellite Live Feed'),
-		html.Div(id='inter_data', style={'display': 'none'}),
+		html.Div(id='hidden-value', style={'display': 'none'}),
 		html.Div(id='live-update-text'),
 		dcc.Graph(id='live-update-graph'),
 		dcc.Interval(
@@ -43,7 +74,7 @@ app.layout = html.Div(
 )
 
 
-@app.callback(Output('inter_data', 'list'),
+@app.callback(Output('hidden-value', 'children'),
 				Input('planet-dropdown', 'value'))
 def upload_data(selected_option):
 		# variables
@@ -65,7 +96,7 @@ def upload_data(selected_option):
 
 
 @app.callback(Output('live-update-text', 'children'),
-				Input('inter_data', 'list'),
+				Input('hidden-value', 'children'),
 			  Input('interval-component', 'n_intervals'))
 def update_metrics(selected_data, n):
 
@@ -85,11 +116,12 @@ def update_metrics(selected_data, n):
 	]
 
 @app.callback(Output('live-update-graph', 'figure'),
-				Input('inter_data', 'list'),
+				Input('planet-dropdown', 'value'),
+				Input('hidden-value', 'children'),
 			  Input('interval-component', 'n_intervals'),
 			  State('live-update-graph', 'relayoutData')
 			  )
-def update_graph_live(selected_data, n, layoutdata):
+def update_graph_live(selected_option, selected_data, n, layoutdata):
 	traces = []
 	# Collect some dataura
 	for idata in selected_data:
@@ -103,12 +135,12 @@ def update_graph_live(selected_data, n, layoutdata):
 			)
 		)
 	
-	fig = plotly.tools.make_subplots(rows=2, cols=1, vertical_spacing=0.2, specs=[[{'type':'scene'}],[{'type':'scene'}]])
+	fig = plotly.tools.make_subplots(rows=2, cols=1, vertical_spacing=0.2, specs=[[{'is_3d':True}],[{'is_3d':True}]])
 	fig['layout']['margin'] = {
 		'l': 30, 'r': 10, 'b': 30, 't': 10
 	}
 	fig['layout']['legend'] = {'x': 0, 'y': 1, 'xanchor': 'left'}
-	fig['layout']['selectdirection'] = 'any'
+	#fig['layout']['selectdirection'] = 'any'
 	#fig['layout']['selectionrevision'] = True
 	if layoutdata and 'scene.camera' in layoutdata:
 		fig.update_layout(scene_camera=layoutdata['scene.camera'])
@@ -116,6 +148,8 @@ def update_graph_live(selected_data, n, layoutdata):
 	else:
 		print('stay layout')
 
+	fig.update_scenes(scene_options[selected_option]
+	)
 	fig.add_traces(
 		traces, 1, 1)
 
