@@ -12,7 +12,6 @@ from datetime import date, datetime
 from astropy.time import Time
 
 
-
 all_options = {
 	'Planets': ['Mercury', 'Venus', 'EM_Bary', 'Mars', 'Jupiter', 'Saturn',
 	 'Uranus', 'Neptune', 'Pluto'],
@@ -22,12 +21,44 @@ all_options = {
 	'Fluid' : ['Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto']
 }
 
+color_options = {
+	'Mercury':'#90a4ae',
+	'Venus': '#ffea00',
+	'EM_Bary':'#1e88e5',
+	'Mars': '#ff6e40',
+	'Jupiter':'#afb42b',
+	'Saturn':'#f8bbd0',
+	'Uranus': '#9fa8da', 
+	'Neptune': '#673ab7',
+	'Pluto': '#d7ccc8'
+}
+
 scene_options = {
 	'Planets' : dict(
-			xaxis = dict(nticks=4, range=[-10,10]),
-			yaxis = dict(nticks=4, range=[-10,10]),
-			zaxis = dict(nticks=4, range=[-10,10])
-			),
+					xaxis = dict(nticks=4, range=[-100,100],
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					yaxis = dict(nticks=4, range=[-100,100],
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					zaxis = dict(nticks=4, range=[-100,100], 
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					aspectmode = 'manual',
+					aspectratio = dict(x=1, y=1, z=1),
+					),
 	'Comets' : dict(
 			xaxis = dict(nticks=4, range=[-2,2]),
 			yaxis = dict(nticks=4, range=[-2,2]),
@@ -39,24 +70,65 @@ scene_options = {
 			zaxis = dict(nticks=4, range=[-2,2])
 			),
 	'Rocky' : dict(
-			xaxis = dict(nticks=4, range=[-2,2]),
-			yaxis = dict(nticks=4, range=[-2,2]),
-			zaxis = dict(nticks=4, range=[-2,2])
-			),
+					xaxis = dict(nticks=4, range=[-2,2],
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					yaxis = dict(nticks=4, range=[-2,2],
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					zaxis = dict(nticks=4, range=[-2,2], 
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					aspectmode = 'manual',
+					aspectratio = dict(x=1, y=1, z=1),
+					),
 	'Fluid' : dict(
-			xaxis = dict(nticks=4, range=[-2,2]),
-			yaxis = dict(nticks=4, range=[-2,2]),
-			zaxis = dict(nticks=4, range=[-2,2])
-			)
+					xaxis = dict(nticks=4, range=[-100,100],
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					yaxis = dict(nticks=4, range=[-100,100],
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					zaxis = dict(nticks=4, range=[-100,100], 
+								backgroundcolor="rgb(0, 0, 0)",
+								showgrid=False,
+								autorange=False,
+								zeroline=False
+								#rangemode = 'tozero', tickmode = "linear",
+								),
+					aspectmode = 'manual',
+					aspectratio = dict(x=1, y=1, z=1),
+					)
 
 	}
 
 
 df = pd.read_csv('kepler_XYZ.csv', index_col='time')
 
-app = dash.Dash(__name__)
-app.layout = html.Div(
-	html.Div([
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app.layout = html.Div([
 		dcc.Dropdown(
 			id='planet-dropdown',
 			options=[
@@ -82,7 +154,6 @@ app.layout = html.Div(
 			n_intervals=0
 		)
 	])
-)
 
 @app.callback(Output('hidden-value', 'children'),
 				Input('planet-dropdown', 'value'),
@@ -141,6 +212,7 @@ def update_metrics(selected_data, n):
 			  )
 def update_graph_live(selected_option, selected_data, n, layoutdata):
 	traces = []
+	line_traces = []
 	# Collect some dataura
 	for idata in selected_data:
 		traces.append(go.Scatter3d(
@@ -149,17 +221,33 @@ def update_graph_live(selected_option, selected_data, n, layoutdata):
 				z = [idata['z'][n]],
 				name = idata['name'],
 				mode = 'markers',
-				marker=dict(size=7, color=idata['z'][n], colorscale='Viridis')
+				marker=dict(size=7, color=color_options[idata['name']], colorscale='Viridis')
+			)
+		)
+		line_traces.append(go.Scatter3d(
+				x = idata['x'][::10],
+				y = idata['y'][::10],
+				z = idata['z'][::10],
+				name = idata['name'],
+				mode = 'lines',
+				marker=dict(size=7, color=color_options[idata['name']], colorscale='Viridis')
 			)
 		)
 	
 	fig = plotly.tools.make_subplots(rows=2, cols=1, vertical_spacing=0.2, specs=[[{'is_3d':True}],[{'is_3d':True}]])
-	fig['layout']['margin'] = {
-		'l': 30, 'r': 10, 'b': 30, 't': 10
+	layout = {
+		'margin': {
+					'l': 30, 'r': 10, 'b': 30, 't': 10
+					},
+		'legend': {
+					'x': 1, 'y': 0.9, 'xanchor': 'right', 'yanchor': 'top'
+					},
+		'autosize': False,
+		'width': 1000,
+		'height': 1000
 	}
-	fig['layout']['legend'] = {'x': 0, 'y': 1, 'xanchor': 'left'}
-	#fig['layout']['selectdirection'] = 'any'
-	#fig['layout']['selectionrevision'] = True
+	fig.update_layout(layout)
+
 	if layoutdata and 'scene.camera' in layoutdata:
 		fig.update_layout(scene_camera=layoutdata['scene.camera'])
 		print(layoutdata['scene.camera'])
@@ -170,6 +258,8 @@ def update_graph_live(selected_option, selected_data, n, layoutdata):
 	)
 	fig.add_traces(
 		traces, 1, 1)
+	fig.add_traces(
+		line_traces, 1, 1)
 
 	return fig
 
