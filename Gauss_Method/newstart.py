@@ -33,6 +33,26 @@ color_options = {
 	'Pluto': '#d7ccc8'
 }
 
+zoom_eye = 0.6
+camera_options = {
+	'default': dict(
+				up=dict(x=0, y=0, z=1),
+				center=dict(x=0, y=0, z=0),
+				eye=dict(x=zoom_eye-0.15, y=zoom_eye-0.15, z=zoom_eye-0.15)
+				),
+	'side': dict(
+				up=dict(x=0, y=0, z=0),
+				center=dict(x=0, y=0, z=0),
+				eye=dict(x=0., y=zoom_eye-0.01, z=0.)
+				),
+	'below': dict(
+				up=dict(x=0, y=0, z=0),
+				center=dict(x=0.1, y=0, z=0),
+				eye=dict(x=0., y=0., z=zoom_eye-0.01)
+				)
+}
+
+
 scene_options = {
 	'Planets' : dict(
 					xaxis = dict(nticks=4, range=[-100,100],
@@ -70,21 +90,21 @@ scene_options = {
 			zaxis = dict(nticks=4, range=[-2,2])
 			),
 	'Rocky' : dict(
-					xaxis = dict(nticks=4, range=[-2,2],
+					xaxis = dict(nticks=4, range=[-10,10],
 								backgroundcolor="rgb(0, 0, 0)",
 								showgrid=False,
 								autorange=False,
 								zeroline=False
 								#rangemode = 'tozero', tickmode = "linear",
 								),
-					yaxis = dict(nticks=4, range=[-2,2],
+					yaxis = dict(nticks=4, range=[-10,10],
 								backgroundcolor="rgb(0, 0, 0)",
 								showgrid=False,
 								autorange=False,
 								zeroline=False
 								#rangemode = 'tozero', tickmode = "linear",
 								),
-					zaxis = dict(nticks=4, range=[-2,2], 
+					zaxis = dict(nticks=4, range=[-10,10], 
 								backgroundcolor="rgb(0, 0, 0)",
 								showgrid=False,
 								autorange=False,
@@ -143,9 +163,15 @@ app.layout = html.Div([
 			start_date = date.today(),
 			end_date=date(2050, 8, 25)
 		),
-		html.H4('TERRA Satellite Live Feed'),
+		html.H4('The orbits of solar system'),
 		html.Div(id='output-container-date-picker-range'),
 		html.Div(id='hidden-value', style={'display': 'none'}),
+		html.Div([
+			html.Button('Default View', id='btn_default', n_clicks=0),
+			html.Button('Below View', id='btn_below', n_clicks=0),
+			html.Button('Side View', id='btn_side', n_clicks=0),
+			html.Div(id='test_btn')
+			]),
 		html.Div(id='live-update-text'),
 		dcc.Graph(id='live-update-graph'),
 		dcc.Interval(
@@ -168,9 +194,25 @@ def upload_data(selected_option, st_date, en_date):
 		end_date_object = datetime.fromisoformat(en_date)
 		ejd = Time(end_date_object).jd
 	
+
 	start=0
 	m = 10000 # data 개수
 	internum = 100 # 속도와 관련 10~50
+
+	if selected_option in ['Planets']:
+		start = 0
+		m = 10000
+		internum = 100
+	elif selected_option in ['Rocky']:
+		start = 0
+		m = 1000
+		internum = 1
+	elif selected_option in ['Fluid']:
+		start = 0
+		m = 3000
+		internum = 100
+	else:
+		pass
 	
 	planets = all_options[selected_option]
 	selected_data = []
@@ -204,13 +246,33 @@ def update_metrics(selected_data, n):
 		html.Span('planet: {}'.format(selected_data[2]['name']))
 	]
 
+@app.callback(Output('test_btn', 'children'),
+			  Input('btn_default', 'n_clicks'),
+			  Input('btn_below', 'n_clicks'),
+			  Input('btn_side', 'n_clicks')
+			  )
+def test_btn_live(defaultview, belowview, sideview):
+	msg = ''
+	changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+	if 'btn_default' in changed_id:
+		msg = "btn_default was most recently c"
+	elif 'btn_below' in changed_id:
+		msg = "btn_below was most recently c"
+	elif 'btn_side' in changed_id:
+		msg = "btn_side was most recently c"
+	return html.Div(msg)
+
+
 @app.callback(Output('live-update-graph', 'figure'),
+				[Input('btn_default', 'n_clicks'),
+			  Input('btn_below', 'n_clicks'),
+			  Input('btn_side', 'n_clicks'),
 				Input('planet-dropdown', 'value'),
 				Input('hidden-value', 'children'),
 			  Input('interval-component', 'n_intervals'),
-			  State('live-update-graph', 'relayoutData')
+			  State('live-update-graph', 'relayoutData')]
 			  )
-def update_graph_live(selected_option, selected_data, n, layoutdata):
+def update_graph_live(defaultview, belowview, sideview, selected_option, selected_data, n, layoutdata):
 	traces = []
 	line_traces = []
 	# Collect some dataura
@@ -242,20 +304,25 @@ def update_graph_live(selected_option, selected_data, n, layoutdata):
 		'legend': {
 					'x': 1, 'y': 0.9, 'xanchor': 'right', 'yanchor': 'top'
 					},
-		'autosize': False,
+		'autosize': True,
 		'width': 1000,
 		'height': 1000
 	}
 	fig.update_layout(layout)
 
-	if layoutdata and 'scene.camera' in layoutdata:
-		fig.update_layout(scene_camera=layoutdata['scene.camera'])
-		print(layoutdata['scene.camera'])
-	else:
-		print('stay layout')
+	changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+	if 'btn_default' in changed_id:
+		for key in scene_options.keys():
+			scene_options[key]['camera'] = camera_options['default']
+	elif 'btn_below' in changed_id:
+		for key in scene_options.keys():
+			scene_options[key]['camera'] = camera_options['below']
+	elif 'btn_side' in changed_id:
+		for key in scene_options.keys():
+			scene_options[key]['camera'] = camera_options['side']
 
-	fig.update_scenes(scene_options[selected_option]
-	)
+	fig.update_scenes(scene_options[selected_option])
+
 	fig.add_traces(
 		traces, 1, 1)
 	fig.add_traces(

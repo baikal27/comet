@@ -82,4 +82,20 @@ fig.show()
              'ylorrd']
              '''
 
+'''
+	changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+	if 'btn_default' in changed_id:
+		fig.update_scenes['camera'] = camera_options['default']
+	elif 'btn_below' in changed_id:
+		fig.update_scenes['camera'] = camera_options['below']
+	elif 'btn_side' in changed_id:
+		fig.update_scenes['camera'] = camera_options['side']
+'''	
 
+'''
+	if layoutdata and 'scene.camera' in layoutdata:
+		fig.update_layout(scene_camera=layoutdata['scene.camera'])
+		print(layoutdata['scene.camera'])
+	else:
+		print('stay layout')
+'''
